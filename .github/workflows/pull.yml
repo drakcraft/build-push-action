@@ -1,0 +1,24 @@
+name: Docker Pull Porter
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: '输入镜像完整名称 (例如: mongo 或 teddysun/kms)'
+        required: true
+        default: 'mongo'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull Docker Image
+        run: docker pull ${{ github.event.inputs.image_name }}
+      
+      - name: Save Docker Image
+        run: docker save ${{ github.event.inputs.image_name }} > image.tar
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-docker-image
+          path: image.tar
