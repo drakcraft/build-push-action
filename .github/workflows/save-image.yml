@@ -1,0 +1,35 @@
+name: Save Docker Image to Tar File
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: '请输入想要打包的完整 Docker 镜像名'
+        required: true
+        default: 'alexta69/metube:latest'
+
+jobs:
+  bundle-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Pull Docker Image
+        run: |
+          docker pull ${{ github.event.inputs.image_name }}
+
+      # 使用 skopeo 强制拉取并直接揉碎成 QNAP 绝对认识的传统 tar 包，100% 避开 125 报错和格式不兼容
+      - name: Copy and Convert Image format via Skopeo
+        run: |
+          mkdir ./output
+          FILENAME=$(echo "${{ github.event.inputs.image_name }}" | sed 's/[\/:]/_/g').tar
+          skopeo copy --src-no-creds docker://${{ github.event.inputs.image_name }} docker-archive:./output/$FILENAME:${{ github.event.inputs.image_name }}
+
+      - name: Upload Image Tar Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-offline-package
+          path: ./output/*
+          retention-days: 1
