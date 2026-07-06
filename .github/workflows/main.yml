@@ -22,13 +22,15 @@ jobs:
         run: |
           docker pull ${{ github.event.inputs.image_name }}
 
-      # 3. 把镜像导出为标准的 .tar 离线文件
+     # 3. 把镜像导出为标准的旧版格式 .tar 离线文件（100% 兼容旧版 NAS）
       - name: Save Image to Tar
         run: |
           mkdir ./output
-          # 将名字中的斜杠替换为下划线，防止文件名报错
           FILENAME=$(echo "${{ github.event.inputs.image_name }}" | sed 's/[\/:]/_/g').tar
-          docker save ${{ github.event.inputs.image_name }} -o ./output/$FILENAME
+          
+          # 核心改动：增加 --format=docker 参数，强制导出为 QNAP 绝对认识的传统格式
+          docker save --format=docker ${{ github.event.inputs.image_name }} -o ./output/$FILENAME
+          
           echo "SAVED_FILENAME=$FILENAME" >> $GITHUB_ENV
 
       # 4. 将打包好的 .tar 文件变成 GitHub 网页附件供你下载
