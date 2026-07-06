@@ -1,0 +1,40 @@
+name: Save Docker Image to Tar File
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: '请输入想要打包的完整 Docker 镜像名'
+        required: true
+        default: 'alexta69/metube:latest' # 默认是前面推荐的带网页版 yt-dlp
+
+jobs:
+  bundle-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 设置拉取环境（如果是 ARM 架构的 NAS，这步可以指定拉取 arm64 版本的镜像）
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 2. 在 GitHub 服务器上拉取目标镜像
+      - name: Pull Docker Image
+        run: |
+          docker pull ${{ github.event.inputs.image_name }}
+
+      # 3. 把镜像导出为标准的 .tar 离线文件
+      - name: Save Image to Tar
+        run: |
+          mkdir ./output
+          # 将名字中的斜杠替换为下划线，防止文件名报错
+          FILENAME=$(echo "${{ github.event.inputs.image_name }}" | sed 's/[\/:]/_/g').tar
+          docker save ${{ github.event.inputs.image_name }} -o ./output/$FILENAME
+          echo "SAVED_FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      # 4. 将打包好的 .tar 文件变成 GitHub 网页附件供你下载
+      - name: Upload Image Tar Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-offline-package
+          path: ./output/*
+          retention-days: 1 # 仅保留 1 天，省空间
